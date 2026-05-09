@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sdl-timeline: SentinelOne SDL CSV → kill-chain HTML report + case management.
+sdl-timeline: SentinelOne SDL CSV -> kill-chain HTML report + case management.
 
 Runs entirely locally. No data leaves the machine.
 
@@ -103,9 +103,9 @@ def cmd_new(args) -> int:
         return 2
 
     print(f"[+] Case opened: {case_dir}")
-    print(f"    report.html  → {case_dir / 'report.html'}")
-    print(f"    case.json    → {case_dir / 'case.json'}")
-    print(f"    notes.md     → edit this with your findings")
+    print(f"    report.html  -> {case_dir / 'report.html'}")
+    print(f"    case.json    -> {case_dir / 'case.json'}")
+    print(f"    notes.md     -> edit this with your findings")
     return 0
 
 
@@ -173,11 +173,11 @@ def cmd_info(args) -> int:
 def main() -> int:
     p = argparse.ArgumentParser(
         prog="sdl-timeline",
-        description="SDL kill-chain timeline + case management. Runs locally — nothing leaves your machine.",
+        description="SDL kill-chain timeline + case management. Runs locally - nothing leaves your machine.",
     )
     sub = p.add_subparsers(dest="cmd")
 
-    p_an = sub.add_parser("analyze", help="One-shot: CSV → HTML report (no case folder)")
+    p_an = sub.add_parser("analyze", help="One-shot: CSV -> HTML report (no case folder)")
     p_an.add_argument("csv", type=Path)
     p_an.add_argument("-o", "--output", type=Path, default=None)
     p_an.add_argument("--include-noise", action="store_true")
@@ -210,7 +210,7 @@ def main() -> int:
     p_in.add_argument("case", type=Path, help="Path to the case folder")
     p_in.set_defaults(func=cmd_info)
 
-    # Backwards compat: bare CSV path → analyze
+    # Backwards compat: bare CSV path -> analyze
     if (len(sys.argv) >= 2
         and sys.argv[1] not in {"analyze", "new", "close", "list", "info", "-h", "--help"}
         and Path(sys.argv[1]).suffix.lower() == ".csv"):

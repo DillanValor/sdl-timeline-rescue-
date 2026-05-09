@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM SDL Timeline — Windows launcher
+REM SDL Timeline - Windows launcher
 REM
 REM Routes to:
 REM   1. A bundled portable Python at .\python\python.exe (preferred)
@@ -25,6 +25,8 @@ if exist "%PORTABLE_PY%" (
 
 REM Tell cli.py where the toolkit root is so case folders land in the right place
 set "SDL_TOOLKIT_ROOT=%ROOT%"
+
+set "PYTHONIOENCODING=utf-8"
 
 "%PY%" "%ROOT%\cli.py" %*
 endlocal
