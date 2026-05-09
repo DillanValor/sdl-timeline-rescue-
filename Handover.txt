@@ -1,0 +1,107 @@
+# SDL Timeline - Handover
+
+Self-contained tool for triaging SentinelOne SDL CSV exports into kill-chain
+HTML reports plus structured per-case folders. Runs locally, no telemetry,
+nothing leaves the machine. Built for MSP threat hunting where the same export
+gets investigated, written up, and archived for cross-tenant correlation later.
+
+
+## TL;DR - what you do
+
+    S1 alert fires
+      -> DVQL export (use the column set from Tech Notes.txt)
+      -> save CSV to C:\Tools\SDL-Toolkit\_Inbox\
+      -> sdl-timeline.bat new "Customer" "case-id" _Inbox\file.csv --open
+      -> review report.html
+      -> fill in notes.md (Hypothesis, Findings, Actions, Outcome)
+      -> sdl-timeline.bat close _Active\<customer>\<date>_<case-id>
+      -> done. Folder is now in _Completed\ as a permanent record.
+
+Daily-use reference is in Tech Notes.txt. This file is just for getting the
+toolkit installed on a new machine.
+
+
+## First-time setup (only if redeploying on a new machine)
+
+The toolkit is a self-contained folder. To stand it up fresh:
+
+1. Clone the repo:
+
+       git clone https://github.com/DillanValor/sdl-timeline-rescue-.git C:\Tools\SDL-Toolkit
+
+2. Download the Python 3.13 embeddable distribution from python.org
+   (Windows x64 ZIP, labeled "Windows embeddable package").
+
+3. Extract it into C:\Tools\SDL-Toolkit\python\
+   (you should end up with C:\Tools\SDL-Toolkit\python\python.exe).
+
+4. Edit python\python313._pth so it contains EXACTLY these four lines
+   (the blank line and the `..` line are both critical):
+
+       python313.zip
+       .
+       ..
+
+       import site
+
+   The `..` line adds the toolkit root to sys.path so the sdl_timeline
+   package can be imported. The `import site` line lets pip-installed
+   packages be found.
+
+5. Bootstrap pip and install pandas:
+
+       cd C:\Tools\SDL-Toolkit
+       curl -o python\get-pip.py https://bootstrap.pypa.io/get-pip.py
+       python\python.exe python\get-pip.py
+       python\python.exe -m pip install pandas
+
+6. Smoke test against the bundled synthetic CSV:
+
+       sdl-timeline.bat analyze examples\synthetic_sdl.csv
+
+   Should produce examples\synthetic_sdl.html with no errors. Open it,
+   confirm the report renders properly (dark theme, severity color-coded
+   process trees, expandable event timeline), then you're ready.
+
+7. (Optional) Try the full case lifecycle on the bundled practice CSV:
+
+       sdl-timeline.bat new "AcmeNorthwind" "phishing-demo" _Inbox\practice_phishing-infostealer.csv --open
+       sdl-timeline.bat list
+       sdl-timeline.bat close _Active\acmenorthwind\<today>_phishing-demo
+
+   This walks the full lifecycle on demo data (fictional infostealer
+   campaign with credential-theft behavioral indicators). Look at what
+   was created under _Active\ then _Completed\ to understand the case
+   folder layout.
+
+
+## Common install gotchas
+
+- `ModuleNotFoundError: No module named 'sdl_timeline'` -- the `..` line is
+  missing from python313._pth (step 4).
+
+- `ModuleNotFoundError: No module named 'pandas'` -- pandas wasn't installed
+  into the embedded Python (step 5), or the `import site` line is missing
+  from python313._pth.
+
+- `'M' is not recognized as an internal or external command` -- you have an
+  old version of cli.py or sdl-timeline.bat with Unicode characters that
+  Windows cmd.exe can't render. Pull the latest from GitHub.
+
+- `Python was not found` when running sdl-timeline.bat -- the .bat couldn't
+  find python\python.exe AND there's no system Python on PATH. Either
+  complete the embedded Python install (steps 2-5) or `pip install pandas`
+  against a system-wide Python 3.10+.
+
+
+## Source code & updates
+
+Repo: https://github.com/DillanValor/sdl-timeline-rescue-
+
+To pull updates on a deployed copy:
+
+    cd C:\Tools\SDL-Toolkit
+    git pull
+
+The .gitignore is set up so updates won't touch your _Active\, _Completed\,
+_Inbox\ (except practice files), or python\ folders.

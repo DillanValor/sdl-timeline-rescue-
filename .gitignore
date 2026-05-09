@@ -29,15 +29,22 @@ python/
 
 # --- Project-specific: client data must never be committed ---
 # Block ALL CSV exports and generated HTML reports by default.
-# These contain client telemetry and host names — treat as PII.
+# These contain client telemetry and host names. Treat as PII.
 *.csv
 *.html
 
-# Block case folders (they contain real client data)
-_Inbox/
+# Active and completed cases (real client investigations)
 _Active/
 _Completed/
 
-# But DO commit the synthetic example used for testing.
+# _Inbox: ignore all CSVs/HTMLs (real client exports), but allow committed
+# practice/demo files and the README. The practice_*.csv naming convention
+# is what gates which files in _Inbox are committed vs blocked.
+_Inbox/*.csv
+_Inbox/*.html
+
+# Allow-list: the synthetic example, the practice/demo files, and READMEs.
 !examples/synthetic_sdl.csv
 !examples/synthetic_sdl.html
+!_Inbox/practice_*.csv
+!_Inbox/README.md

@@ -1,0 +1,135 @@
+Before exporting from the S1 console, paste these into the column picker in
+Deep Visibility. ~38 fields, hits ~95% of what the tool knows how to use.
+Pulling fewer means missing flags; pulling all 670 columns means more client
+data leaving the tenant unnecessarily (data minimization).
+
+**Process context:**
+event.time, event.type, endpoint.name, src.process.storyline.id, src.process.uid,
+src.process.pid, src.process.name, src.process.cmdline, src.process.image.path,
+src.process.image.sha256, src.process.publisher, src.process.verifiedStatus,
+src.process.user, src.process.parent.uid, src.process.parent.pid,
+src.process.parent.name, src.process.parent.cmdline
+
+**Detection metadata (the high-signal stuff — never skip these):**
+alert.name, alert.description, indicator.name, indicator.description,
+indicator.category, event.mitreTactic, event.mitreTechnique.id,
+event.mitreTechnique.name
+
+**Event-specific:**
+tgt.file.path, tgt.file.sha256, tgt.process.name, tgt.process.pid,
+tgt.process.cmdline, src.ip.address, src.port.number, dst.ip.address,
+dst.port.number, dns.request, dns.response, registry.keyPath, registry.value
+
+Folder Structure (Feel free to put the SDL-Toolkit wherever you want. This is where you'll be running cmd from)
+
+C:\Tools\SDL-Toolkit\
+├── python\                    Python embeddable distribution
+├── sdl_timeline\              The package
+├── cli.py
+├── sdl-timeline.bat           Your launcher
+├── _Inbox\                    Drop CSVs here from S1 console
+├── _Active\                   Cases in progress
+│   └── <Customer>\<YYYY-MM-DD_case-id>\
+│       ├── source.csv			copy of the csv created by the script
+│       ├── report.html		Open to analyze report
+│       ├── case.json          Metadata + IOCs
+│       └── notes.md           Free-form analyst notes
+└── _Completed\                Mirror of _Active, post-investigation
+    └── <Customer>\<YYYY-MM-DD_case-id>\
+
+
+## Daily workflow
+
+Open cmd, cd into `C:\Tools\SDL-Toolkit`, then run commands.
+
+### Open a new case
+
+cmd: sdl-timeline.bat new "Customer" "short-case-id" _Inbox\file.csv --open
+
+What it does:
+- Creates `_Active\<customer-slug>\<YYYY-MM-DD>_<case-id>\`
+- **Copies** (not moves) the CSV as `source.csv`. Original stays in
+  `_Inbox\` — delete it after the copy if you like, it's redundant now.
+- Runs the analysis pipeline -> writes `report.html`
+- Extracts IOCs (hashes, IPs, domains, URLs, file paths, suspicious
+  publishers) -> writes `case.json`
+- Drops a `notes.md` template
+- `--open` pops the report in your default browser
+
+### Edit notes.md while you investigate
+
+Four sections. Gather all info possible:
+
+- **Hypothesis** — what you thought BEFORE digging in. ("Looked like routine
+  PUP at first.") Important for learning when you're wrong; important for
+  performance review showing your reasoning.
+- **Findings** — what the report actually showed. Kill chain, IOCs, anything
+  notable.
+- **Actions Taken** — checkboxes. Quarantine, ban hash, blocklist domain at
+  FortiGate, customer notification, password reset, etc.
+- **Outcome** — false positive / contained / customer compromised / etc.
+
+Aim for 5–15 minutes of writing per case. You're writing for future-you and a
+hypothetical reviewer trying to understand your decision-making.
+
+### Track work in progress
+
+```cmd
+sdl-timeline.bat list                    :: active cases
+sdl-timeline.bat list --closed           :: archive
+sdl-timeline.bat list --closed <Customer>   :: archive filtered to one customer
+sdl-timeline.bat list --all > investigations-2026.txt
+```
+
+Quick stats for one case:
+
+```cmd
+sdl-timeline.bat info _Active\<customer>\<date>_<case-id>
+```
+(`info` PRINTS metadata. It does NOT close the case.)
+
+### Close a case
+
+After notes.md is filled in:
+
+```cmd
+sdl-timeline.bat close _Active\<customer>\<date>_<case-id>
+```
+
+Moves the entire case folder from `_Active\` to `_Completed\`, stamps
+`status: "closed"` and `date_closed` into case.json. Does NOT create any
+new files — the closed case folder is the same four files (source.csv,
+report.html, case.json, notes.md), just relocated.
+
+## Severity rubric (what the report is telling you)
+
+| Level       | Trigger |
+|-------------|---------|
+| **noise**   | Known-good vendor or signed Microsoft system process, no other flags. Suppressed from the report by default. |
+| **low**     | Routine event, no flags raised. |
+| **medium**  | 2+ heuristic flags, OR any event from a process that fired a high-severity Behavioral Indicator anywhere else (severity propagation). |
+| **high**    | Encoded PowerShell, shadow copy delete, mimikatz, certutil download, LOLBin from a user-writable path (Temp/AppData/Public), S1 Behavioral Indicator on the process, abuse-cert publisher. |
+
+## Customer naming — pick one and stick with it
+
+Slugify treats `"Acme"` and `"Acme law"` as different customers
+(folders `garland` and `garland-sales`). `list garland` only finds the first.
+
+**Pick a canonical name per customer once and never deviate.** Treat customer
+names like database keys.
+
+If you mess up and need to merge later, it's just folder renames under
+`_Active\` and `_Completed\`. The tool doesn't care; the customer name in
+case.json is for display only.
+
+## Privacy / handling the artifacts
+
+- `report.html` embeds the source event data as JSON inside the file. Same
+  sensitivity as the source CSV.
+- `case.json` contains hostnames, usernames, hashes, IPs. Same sensitivity.
+- Keep `_Active\` and `_Completed\` on encrypted storage (BitLocker volume,
+  encrypted portable drive).
+- Don't email these around. If you need to share with a coworker, use the
+  same secure channel you'd use for the raw CSV.
+- The toolkit makes zero network calls and has no telemetry. All data stays
+  on the machine.
