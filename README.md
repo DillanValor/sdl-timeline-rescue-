@@ -78,6 +78,10 @@ better triage.
 
 Noise is dropped from the data by default.
 
+<img width="1879" height="710" alt="image" src="https://github.com/user-attachments/assets/786f56ea-e42a-403d-b202-bc4af7e680a0" />
+
+
+
 ## Privacy
 
 The HTML output embeds your event data as JSON inside the file. **Treat the
