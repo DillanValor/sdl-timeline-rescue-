@@ -1,5 +1,7 @@
 # sdl-timeline
 
+MIT Licenses
+
 Convert SentinelOne SDL CSV exports into interactive kill-chain HTML reports.
 Runs **entirely locally** — nothing ever leaves your machine.
 
