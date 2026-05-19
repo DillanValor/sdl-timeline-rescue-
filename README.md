@@ -99,6 +99,7 @@ sdl-timeline/
 ├── cli.py                          # CLI entry point
 ├── sdl-timeline.bat                # Windows launcher
 ├── requirements.txt
+├──LICENSE
 ├── README.md
 ├── WORKFLOW.md                     # Full deployment + case workflow doc
 └── sdl_timeline/                   # Importable as a package
